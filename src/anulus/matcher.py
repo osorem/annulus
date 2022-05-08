@@ -5,13 +5,16 @@ from typing import Dict, Union
 import cv2
 import numpy as np
 
+from . import settings as st
+
 path = os.path.dirname(os.path.abspath(
     inspect.getfile(inspect.currentframe())))
 
 
 path_matchers = os.path.join(path, 'matchers')
 
-imgs_temp = [os.path.join(path_matchers, name) for name in os.listdir(path_matchers) if name.endswith(".png")]
+imgs_temp = [os.path.join(path_matchers, name) for name in os.listdir(
+    path_matchers) if name.endswith(".png")]
 
 print(f"Loaded {len(imgs_temp)} images to be used for matching")
 
@@ -59,35 +62,93 @@ classes = {
     "stop.png": "Stop"
 }
 
-orb = cv2.ORB_create()
-m = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
 
 queries_imgs = {k.split("/")[-1]: cv2.imread(k, 0) for k in imgs_temp}
-queires_descriptors = {k: orb.detectAndCompute(
+orb = cv2.ORB_create()
+queries_descriptors = {k: orb.detectAndCompute(
     v, None)[1] for k, v in queries_imgs.items()}
 
 
-def orb_matcher(img: np.array, threshold=60) -> Union[str, Dict]:
+def orb_matcher(img: np.array, threshold=60,
+                norm=st.MatchNorm.HAMMING,
+                mode=st.ClassiferAggMode.MEAN,
+                post=st.ClassifierPostOp.MIN,
+                comp=st.ClassifierThreshComparator.SMALLER_THAN_EQ) -> Union[str, Dict]:
     global orb
-    global m
+    global queries_descriptors
+
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+
+    print(f"Selecting norm {norm}")
+    if norm == st.MatchNorm.HAMMING:
+        matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+    elif norm == st.MatchNorm.HAMMING2:
+        matcher = cv2.BFMatcher(cv2.NORM_HAMMING2, crossCheck=True)
+    elif norm == st.MatchNorm.L1:
+        matcher = cv2.BFMatcher(cv2.NORM_L1, crossCheck=True)
+    elif norm == st.MatchNorm.L2:
+        matcher = cv2.BFMatcher(cv2.NORM_L2, crossCheck=True)
+    elif norm == st.MatchNorm.L2SQR:
+        matcher = cv2.BFMatcher(cv2.NORM_L2SQR, crossCheck=True)
+    elif norm == st.MatchNorm.INF:
+        matcher = cv2.BFMatcher(cv2.NORM_INF, crossCheck=True)
+    elif norm == st.MatchNorm.MINMAX:
+        matcher = cv2.BFMatcher(cv2.NORM_MINMAX, crossCheck=True)
+
+    mode_func = np.mean
+
+    print(f"Selecting mode {mode}...")
+    if mode == st.ClassiferAggMode.MEAN:
+        mode_func = np.mean
+    elif mode == st.ClassiferAggMode.MAX:
+        mode_func = np.max
+    elif mode == st.ClassiferAggMode.MIN:
+        mode_func = np.min
+    elif mode == st.ClassiferAggMode.MEDIAN:
+        mode_func = np.median
+    elif mode == st.ClassiferAggMode.AVG:
+        mode_func = np.average
+    elif mode == st.ClassiferAggMode.VAR:
+        mode_func = np.var
 
     _, img_descriptors = orb.detectAndCompute(img, None)
 
-    scores_mean = {}
+    scores_agg = {}
 
-    for k, v in queires_descriptors.items():
-        matches = m.match(img_descriptors, v)
+    for k, v in queries_descriptors.items():
+        matches = matcher.match(img_descriptors, v)
 
         dists = [m.distance for m in matches]
 
-        scores_mean[k] = np.mean(dists)
+        scores_agg[k] = mode_func(dists)
 
-    max_ = max(scores_mean, key=scores_mean.get)
+    post_func = min
 
-    print(f"Got a max score of {scores_mean[max_]} which belongs to {classes[max_]}...")
+    if post == st.ClassifierPostOp.MIN:
+        post_func = min
+    elif post == st.ClassifierPostOp.MAX:
+        post_func = max
 
-    if scores_mean[max_] < threshold:
+    post_ = post_func(scores_agg, key=scores_agg.get)
+
+    print(
+        f"Got a aggregate score of {scores_agg[post_]} which belongs to {classes[post_]}...")
+
+    cond = scores_agg[post_] < threshold
+
+    if comp == st.ClassifierThreshComparator.SMALLER_THAN:
+        cond = scores_agg[post_] < threshold
+    elif comp == st.ClassifierThreshComparator.SMALLER_THAN_EQ:
+        cond = scores_agg[post_] <= threshold
+    elif comp == st.ClassifierThreshComparator.LARGER_THAN_EQ:
+        cond = scores_agg[post_] >= threshold
+    elif comp == st.ClassifierThreshComparator.LARGER_THAN:
+        cond = scores_agg[post_] > threshold
+
+    if cond:
         print("Threshold larger than max mean score...")
-        -1, scores_mean
+        -1, scores_agg
 
-    return classes[max_], scores_mean
+    return f"{classes[post_]} - { scores_agg[post_]}", scores_agg

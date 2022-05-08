@@ -9,6 +9,37 @@ class ClassifierType(str, Enum):
     SSID = 'SSID'
 
 
+class ClassiferAggMode(str, Enum):
+    MEAN = "MEAN"
+    MIN = "MIN"
+    MAX = "MAX"
+    MEDIAN = "MEDIAN"
+    AVG = "AVG"
+    VAR = "VAR"
+
+
+class ClassifierPostOp(str, Enum):
+    MIN = "MIN"
+    MAX = "MAX"
+
+
+class ClassifierThreshComparator(str, Enum):
+    LARGER_THAN = "LARGER_THAN"
+    SMALLER_THAN = "SMALLER_THAN"
+    LARGER_THAN_EQ = "LARGER_THAN_EQ"
+    SMALLER_THAN_EQ = "SMALLER_THAN_EQ"
+
+
+class MatchNorm(str, Enum):
+    HAMMING = 'HAMMING'
+    HAMMING2 = 'HAMMING2'
+    L1 = 'L1'
+    L2 = 'L2'
+    L2SQR = 'L2SQR'
+    MINMAX = 'MINMAX'
+    INF = 'INF'
+
+
 class Settings(BaseModel):
     """
     This object includes the settings for detection.
@@ -49,13 +80,24 @@ class Settings(BaseModel):
     max_radius: Optional[int] = 250
     param_1: Optional[int] = 400
     param_2: Optional[int] = 120
-    thresh_temp: Optional[float] = 0.85
     do_op: Optional[bool] = True
     do_op_hsv: Optional[bool] = True
     do_op_circle: Optional[bool] = True
     add_hue: Optional[int] = 20
     do_classify: Optional[bool] = True
     classifier: Optional[ClassifierType] = ClassifierType.ORB
+    classifier_norm: Optional[MatchNorm] = MatchNorm.HAMMING2
+    classifier_aggmode: Optional[ClassiferAggMode] = ClassiferAggMode.MEAN
+    classifier_threshold: Optional[float] = 50
+    classifer_postop: Optional[ClassifierPostOp] = ClassifierPostOp.MIN
+    classifier_thresh_comp: Optional[ClassifierThreshComparator] = ClassifierThreshComparator.SMALLER_THAN_EQ
 
     class Config:
         use_enum_values = True
+
+
+class Coords(BaseModel):
+    y1: int
+    y2: int
+    x1: int
+    x2: int
