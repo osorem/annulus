@@ -4,7 +4,11 @@ from typing import List
 import cv2
 import numpy as np
 
+from . import settings as st
+
 from . import auto_brighten
+
+KERNEL = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
 
 
 def enclose_red(img: np.array,
@@ -13,7 +17,13 @@ def enclose_red(img: np.array,
                 red_thresh=125,
                 op_brighten=False,
                 op_brighten_hsv=True,
-                add_hue=40) -> np.array:
+                op_sharpen=False,
+                post_ops=[st.ColorPostOps.OP_CLOSE],
+                add_red=20,
+                add_hue=40,
+                add_val=20,
+                add_sat=20,
+                convert_hsv=False) -> np.array:
     """
     This function takes four arguments and isolates the red color. The red
     image is later given to HoughCircles to detect circles so it's necessary that image is clean
@@ -47,38 +57,79 @@ def enclose_red(img: np.array,
     kernel = cv2.getStructuringElement(
         shape=cv2.MORPH_ELLIPSE, ksize=(9, 9))
 
-    hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
     copy_img = img.copy()
 
-    if op_brighten:
-        img, _, _ = auto_brighten.automatic_brightness_and_contrast(img)
+    if add_red:
+        copy_img[:, :, 2] += add_red
+        copy_img[:, :, 2] = np.clip(copy_img[:, :, 2], 0, 255)
 
-        hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    if op_sharpen:
+        copy_img = cv2.filter2D(copy_img, -1, KERNEL)
+        copy_img = cv2.detailEnhance(copy_img)
+
+    if op_brighten:
+        copy_img, _, _ = auto_brighten.automatic_brightness_and_contrast(copy_img)
+
+    
+    hsv_img = cv2.cvtColor(copy_img, cv2.COLOR_BGR2HSV)
         
     if op_brighten_hsv:
         hsv_img[:, :, 0] = np.where(
             (hsv_img[:, :, 0] > 100 - add_hue) &
-            (hsv_img[:, :, 0] < 100 + (add_hue * 2)),
+            (hsv_img[:, :, 0] < 100 + (add_hue)),
             hsv_img[:, :, 0] + add_hue, hsv_img[:, :, 0])
 
         hsv_img[:, :, 0] = np.clip(hsv_img[:, :, 0], 0, 180)
 
-        normed = cv2.normalize(hsv_img, None, 0, 180,
-                               cv2.NORM_MINMAX, cv2.CV_8UC1)
+        hsv_img[:, :, 1] = np.where(
+            (hsv_img[:, :, 1] > 150 - add_sat) &
+            (hsv_img[:, :, 1] < 150 + (add_sat)),
+            hsv_img[:, :, 1] + add_sat, hsv_img[:, :, 1])
 
-        close = cv2.morphologyEx(normed, cv2.MORPH_CLOSE, kernel)        
+        hsv_img[:, :, 1] = np.clip(hsv_img[:, :, 1], 1, 255)
 
-        hsv_img = cv2.GaussianBlur(normed, (5, 5), 0)
+        hsv_img[:, :, 2] = np.where(
+            (hsv_img[:, :, 2] > 150 - add_val) &
+            (hsv_img[:, :, 2] < 150 + (add_val)),
+            hsv_img[:, :, 2] + add_val, hsv_img[:, :, 2])
+
+        hsv_img[:, :, 2] = np.clip(hsv_img[:, :, 2], 0, 255)
 
     lower_mask = cv2.inRange(hsv_img, lower_thrershold[0],
                              lower_thrershold[1])
     upper_mask = cv2.inRange(hsv_img, upper_thrershold[0],
                              upper_thrershold[1])
 
+    if convert_hsv:
+        copy_img = cv2.cvtColor(hsv_img, cv2.COLOR_HSV2BGR)
+
     isolated = cv2.bitwise_and(
         copy_img, copy_img, mask=lower_mask + upper_mask)
     close = cv2.morphologyEx(isolated, cv2.MORPH_CLOSE, kernel)
     copy_img = cv2.GaussianBlur(close, (5, 5), 0)
 
-    return np.where(copy_img > red_thresh, copy_img, 0)
+    img_copy = np.where(copy_img > red_thresh, copy_img, 0)
+
+    for op in post_ops:
+        if op == st.ColorPostOps.OP_BLUR:
+            kernel_size = 5
+            img_copy = cv2.GaussianBlur(img_copy,       
+                         (kernel_size, kernel_size), 0)
+        if op == st.ColorPostOps.OP_SHARPEN:
+            img_copy = cv2.filter2D(img_copy, -1, KERNEL)
+            img_copy = cv2.detailEnhance(img_copy)
+
+        if op == st.ColorPostOps.OP_CLOSE:
+            kernel = cv2.getStructuringElement(
+            shape=cv2.MORPH_ELLIPSE, ksize=(8, 8))
+            img_copy = cv2.morphologyEx(img_copy, cv2.MORPH_CLOSE, kernel)
+
+        if op == st.ColorPostOps.OP_THRESHOLD:
+            img_copy = cv2.cvtColor(img_copy, cv2.COLOR_BGR2GRAY)
+            img_copy = cv2.adaptiveThreshold(img_copy.astype(np.uint8), 255, 1, 1, 11, 2)
+
+        if op == st.ColorPostOps.OP_NORMALIZE:
+            img_copy = cv2.normalize(img_copy, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8UC1)
+
+    return img_copy

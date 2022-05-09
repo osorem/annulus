@@ -10,7 +10,7 @@ from . import shape, template
 KERNEL = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
 
 
-def anulus_detect(img_path: str, settings: st.Settings, pyrd=True) -> np.array:
+def anulus_detect(img_path: str, stn: st.Settings, pyrd=True) -> np.array:
     """
     This is the main detect function.
 
@@ -28,45 +28,54 @@ def anulus_detect(img_path: str, settings: st.Settings, pyrd=True) -> np.array:
         Score dict: List 
             final SSIM score dict
     """
+    p = st.Printer(verbose=stn.global_verbose)
+
 
     img = cv2.imread(img_path)
 
     if pyrd:
-        print("Pyring down the image as pyrd=True...")
+        p("Pyring down the image as pyrd=True...")
         img = cv2.pyrDown(img)
         img = cv2.resize(img, (1024, 768))
-    print("Isolating the color red based on your settings...")
+
+    p("Isolating the color red based on your settings...")
     color_isolated = color.enclose_red(
-        img, settings.color_low,
-        settings.color_high, settings.red_thresh,
-        op_brighten=settings.do_op,
-        op_brighten_hsv=settings.do_op_hsv,
-        add_hue=settings.add_hue)
+        img, stn.color_low,
+        stn.color_high, stn.color_red_thresh,
+        op_brighten=stn.color_auto_brighten,
+        op_brighten_hsv=stn.color_op_hsv,
+        op_sharpen=stn.color_sharpen,
+        add_red=stn.color_add_red,
+        add_hue=stn.color_add_hue,
+        add_val=stn.color_add_value,
+        add_sat=stn.color_add_saturation,
+        post_ops=stn.color_post_ops,
+        convert_hsv=stn.color_convert_hsv)
 
     circles = shape.detect_circle(
         color_isolated,
-        settings.dp,
-        settings.min_dist_circle,
-        settings.min_radius,
-        settings.max_radius,
-        settings.param_1,
-        settings.param_2,
-        settings.do_op_circle
+        stn.circle_dp,
+        stn.circle_min_dist_from,
+        stn.circle_min_radius,
+        stn.circle_max_radius,
+        stn.circle_param_1,
+        stn.circle_param_2,
+        op_list=stn.circle_op_list,
+        algo=stn.circle_algo
     )
 
     output = img.copy()
 
-    dcts = {}
-    coords = {}
-    cropped = {}
-    all_det = []
+    res = {}
 
     h, w, _ = img.shape
 
-    print(f"Found {len(circles)} circles...")
+    p(f"Found {len(circles)} circles...")
+
+    added = 0
 
     for i, circle in enumerate(circles):
-        print(f"Operating on circle {i + 1}/{len(circles)}...")
+        p(f"Operating on circle {i + 1}/{len(circles)}...")
 
         x, y, r = circle
 
@@ -83,6 +92,7 @@ def anulus_detect(img_path: str, settings: st.Settings, pyrd=True) -> np.array:
         isolated = color_isolated[y_left:y_right, x_left:x_right, :]
 
         if 0 in isolated.shape[:2]:
+            p("Size of cropped image was 0, continuing...")
             continue
 
         img_isolated_only = np.zeros((h, w, 3))
@@ -95,10 +105,10 @@ def anulus_detect(img_path: str, settings: st.Settings, pyrd=True) -> np.array:
         y_min, y_max = np.min(ys), np.max(ys)
 
         cd = st.Coords(
-            x1=x_min,
-            x2=x_max,
-            y1=y_min,
-            y2=y_max
+            x1=x_min - stn.classifier_add_bb,
+            x2=x_max + stn.classifier_add_bb,
+            y1=y_min - stn.classifier_add_bb,
+            y2=y_max + stn.classifier_add_bb
         )
 
         img_cropped = crp.imcrop(img, cd)
@@ -116,40 +126,45 @@ def anulus_detect(img_path: str, settings: st.Settings, pyrd=True) -> np.array:
         except:
             pass
 
-        if settings.classifier == st.ClassifierType.ORB:
-            temp, dct = matcher.orb_matcher(img_cropped,
-                                            settings.classifier_threshold,
-                                            settings.classifier_norm,
-                                            settings.classifier_aggmode,
-                                            settings.classifer_postop,
-                                            settings.classifier_thresh_comp)
+        if stn.classifier == st.ClassifierType.ORB:
+            temp, dct, agg_score = matcher.orb_matcher(img_cropped,
+                                            stn.classifier_threshold,
+                                            stn.classifier_norm,
+                                            stn.classifier_aggmode,
+                                            stn.classifer_postop,
+                                            stn.classifier_thresh_comp)
+            p(f"Got an aggscore of {agg_score}")
         else:
-            temp, dct = template.get_max_sim(img_cropped, settings.thresh_temp)
+            temp, dct = template.get_max_sim(img_cropped, stn.thresh_temp)
 
         if temp == -1:
-            print("Could not detect any of the sign shapes based on given templates...")
+            p("Could not detect any of the sign shapes based on given templates...")
             continue
 
-        print("Shape detected, adding to list...")
+        p("Shape detected, adding to list...")
         cv2.rectangle(output, (cd.x1, cd.y1), (cd.x2, cd.y2),
                       (0, 255, 0), thickness=2)
         cv2.circle(output, (x, y), r, (0, 180, 0), 2)
 
-        if settings.do_classify:
-            print("DoClassify enabled, marking classification...")
+        if stn.do_classify:
+            p("DoClassify enabled, marking classification...")
             cv2.putText(output, temp,
                         fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5,
                         color=(0, 210, 0), thickness=2, org=(x, y))
 
         temp = f"{i + 1} - {temp}"
-        coords[temp] = {"real": (x, y, r), "adjusted": cd}
-        dcts[temp] = dct
-        cropped[temp] = img_cropped
-        all_det.append(temp)
+        
+        res[temp] = {}
+        res[temp]['agg_score'] = agg_score
+        res[temp]['coords'] = {"real": (x, y, r), "adjusted": cd}
+        res[temp]['scores'] = dct
+        res[temp]['cropped'] = img_cropped
 
-    if len(coords) == 0:
-        print("Warning: No signs detected, output image won't have any marks...")
+        added += 1
 
-    print("Done! Returning the output image, scores, sign coordinates and isolated color.")
+    if added == 0:
+        p("Warning: No signs detected, output image won't have any marks...")
 
-    return output, dcts, coords, color_isolated, cropped, all_det
+    p("Done! Returning the output image, scores, sign coordinates and isolated color.")
+
+    return output, color_isolated, res

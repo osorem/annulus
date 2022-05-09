@@ -28,18 +28,18 @@ img_temp_line = cv2.imread(path_line)
 st = settings.Settings()
 
 color_no_entry = img_as_float(cv2.resize(color.enclose_red(img_temp_no_entry, st.color_low,
-                                                           st.color_high, st.red_thresh), (400, 400)))
+                                                           st.color_high, st.color_red_thresh), (400, 400)))
 
 color_no_wait = img_as_float(cv2.resize(color.enclose_red(img_temp_no_wait, st.color_low,
-                                                          st.color_high, st.red_thresh), (400, 400)))
+                                                          st.color_high, st.color_red_thresh), (400, 400)))
 
 
 color_line = img_as_float(cv2.resize(color.enclose_red(img_temp_line, st.color_low,
-                                                       st.color_high, st.red_thresh), (400, 400)))
+                                                       st.color_high, st.color_red_thresh), (400, 400)))
 
 
 color_ring = img_as_float(cv2.resize(color.enclose_red(img_temp_ring, st.color_low,
-                                                       st.color_high, st.red_thresh), (400, 400)))
+                                                       st.color_high, st.color_red_thresh), (400, 400)))
 
 
 def get_max_sim(img: np.array, thresh=0.7) -> bool:

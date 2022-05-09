@@ -3,6 +3,9 @@ from typing import List
 import cv2
 import numpy as np
 
+from . import settings as st
+
+KERNEL = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
 
 def detect_circle(
         img: np.array,
@@ -12,7 +15,8 @@ def detect_circle(
         max_radius=10,
         param_1=200,
         param_2=20,
-        op=True) -> np.array:
+        algo=st.CircleAlgo.GRADIENT,
+        op_list=[st.CircleOps.OP_CLOSE]) -> np.array:
     """
     Detect circle is the only shape detect function that is used in the final detect
     function so it's the only one worth documenting.
@@ -47,24 +51,45 @@ def detect_circle(
             
     """
     
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img_copy = img.copy()
 
-    if op:
-        normed = cv2.normalize(gray, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8UC1)
-        kernel = cv2.getStructuringElement(
+    for op in op_list:
+        if op == st.CircleOps.OP_BLUR:
+            kernel_size = 5
+            img_copy = cv2.GaussianBlur(img_copy,       
+                         (kernel_size, kernel_size), 0)
+        if op == st.CircleOps.OP_SHARPEN:
+            img_copy = cv2.filter2D(img_copy, -1, KERNEL)
+            img_copy = cv2.detailEnhance(img_copy)
+
+        if op == st.CircleOps.OP_CLOSE:
+            kernel = cv2.getStructuringElement(
             shape=cv2.MORPH_ELLIPSE, ksize=(8, 8))
-        closed = cv2.morphologyEx(normed, cv2.MORPH_CLOSE, kernel)
-    
-        thresh = cv2.adaptiveThreshold(closed, 255, 1, 1, 11, 2)
+            img_copy = cv2.morphologyEx(img_copy, cv2.MORPH_CLOSE, kernel)
 
-        kernel_size = 5
-        blur_opened = cv2.GaussianBlur(thresh, (kernel_size, kernel_size), 0)
+        if op == st.CircleOps.OP_THRESHOLD:
+            img_copy = cv2.cvtColor(img_copy, cv2.COLOR_BGR2GRAY)
+            img_copy = cv2.adaptiveThreshold(img_copy.astype(np.uint8), 255, 1, 1, 11, 2)
 
-        gray = blur_opened
+        if op == st.CircleOps.OP_NORMALIZE:
+            img_copy = cv2.normalize(img_copy, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8UC1)
     
+    if st.CircleOps.OP_THRESHOLD in op_list:
+        gray = img_copy
+    else:
+        gray = cv2.cvtColor(img_copy, cv2.COLOR_BGR2GRAY) 
+    
+    algo_circle = cv2.HOUGH_GRADIENT
+
+    if algo == st.CircleAlgo.GRADIENT:
+        algo_circle = cv2.HOUGH_GRADIENT
+    elif algo == st.CircleAlgo.GRADIENT_ALT:
+        algo_circle = cv2.HOUGH_GRADIENT_ALT
+
+
     circles = cv2.HoughCircles(
         gray,
-        cv2.HOUGH_GRADIENT,
+        algo_circle,
         dp,
         min_dist,
         minRadius=min_radius,
