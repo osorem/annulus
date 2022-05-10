@@ -1,4 +1,3 @@
-from fileinput import close
 from typing import List
 
 import cv2
@@ -12,8 +11,8 @@ KERNEL = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
 
 
 def enclose_red(img: np.array,
-                lower_thrershold=((120, 50, 50), (150, 255, 255)),
-                upper_thrershold=((175, 60, 50), (180, 255, 255)),
+                lower_threshold=((120, 50, 50), (150, 255, 255)),
+                upper_threshold=((175, 60, 50), (180, 255, 255)),
                 red_thresh=125,
                 op_brighten=False,
                 op_brighten_hsv=True,
@@ -96,16 +95,18 @@ def enclose_red(img: np.array,
 
         hsv_img[:, :, 2] = np.clip(hsv_img[:, :, 2], 0, 255)
 
-    lower_mask = cv2.inRange(hsv_img, lower_thrershold[0],
-                             lower_thrershold[1])
-    upper_mask = cv2.inRange(hsv_img, upper_thrershold[0],
-                             upper_thrershold[1])
+    lower_mask = cv2.inRange(hsv_img, lower_threshold[0],
+                             lower_threshold[1])
+    upper_mask = cv2.inRange(hsv_img, upper_threshold[0],
+                             upper_threshold[1])
 
     if convert_hsv:
         copy_img = cv2.cvtColor(hsv_img, cv2.COLOR_HSV2BGR)
 
+    mask = lower_mask ^ upper_mask
+
     isolated = cv2.bitwise_and(
-        copy_img, copy_img, mask=lower_mask + upper_mask)
+        copy_img, copy_img, mask=mask)
     close = cv2.morphologyEx(isolated, cv2.MORPH_CLOSE, kernel)
     copy_img = cv2.GaussianBlur(close, (5, 5), 0)
 
@@ -133,3 +134,21 @@ def enclose_red(img: np.array,
             img_copy = cv2.normalize(img_copy, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8UC1)
 
     return img_copy
+
+
+
+def detect_red(img=np.ndarray, 
+        lower_threshold=(120, 30, 30), 
+        upper_threshold=(180, 255, 255)) -> bool:
+
+    hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    
+    lower_mask = cv2.inRange(hsv_img, lower_threshold[0],
+                             lower_threshold[1])
+    upper_mask = cv2.inRange(hsv_img, upper_threshold[0],
+                             upper_threshold[1])
+
+    mask = lower_mask ^ upper_mask
+
+
+    return 255 in mask

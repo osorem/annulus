@@ -81,7 +81,6 @@ def orb_matcher(img: np.array, threshold=60,
 
     matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
 
-    print(f"Selecting norm {norm}")
     if norm == st.MatchNorm.HAMMING:
         matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
     elif norm == st.MatchNorm.HAMMING2:
@@ -99,7 +98,6 @@ def orb_matcher(img: np.array, threshold=60,
 
     mode_func = np.mean
 
-    print(f"Selecting mode {mode}...")
     if mode == st.ClassiferAggMode.MEAN:
         mode_func = np.mean
     elif mode == st.ClassiferAggMode.MAX:
