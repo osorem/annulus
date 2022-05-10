@@ -25,8 +25,8 @@ def anulus_detect(img_path: str, stn: st.Settings, pyrd=True, resize=(820, 600))
             Whethet to pyrDown the image or not (derease qualiy and size.
 
     Returns
-        Final image annotated: np.array    
-        Score dict: List 
+        Final image annotated: np.array
+        Score dict: List
             final SSIM score dict
     """
     print("Began anulus-detect-MAIN")
@@ -108,7 +108,7 @@ def anulus_detect(img_path: str, stn: st.Settings, pyrd=True, resize=(820, 600))
         img_isolated_only[y_left:y_right,
                           x_left:x_right] = np.where(
             crp.imcrop(color_isolated, cd_r) > 0, 1, 0)
-        
+
 
         ys, xs, _ = np.where(img_isolated_only > 0)
 
@@ -116,10 +116,10 @@ def anulus_detect(img_path: str, stn: st.Settings, pyrd=True, resize=(820, 600))
             p("Image larger than zero empty, continuing...")
             continue
 
-        
+
         x_min, x_max = np.min(xs), np.max(xs)
         y_min, y_max = np.min(ys), np.max(ys)
-        
+
         p("Cropping the image...")
         cd = st.Coords(
             x1=x_min - stn.classifier_add_bb,
@@ -228,9 +228,9 @@ def anulus_detect_alt(img_path: str, stn: st.Settings, pyrd=True, resize=(820, 6
     cnts = ops.find_contour(img_preprocessed)
     p(f"Found {len(cnts)} contours")
 
-    signs, coords = ops.find_signs(img_preprocessed, cnts, stn.detect_threshold,    
+    signs, coords = ops.find_signs(img_preprocessed, cnts, stn.detect_threshold,
                          stn.detect_distance_threshold)
-    
+
     output = img.copy()
 
     if len(coords) == 0:
