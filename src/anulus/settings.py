@@ -46,6 +46,7 @@ class CircleOps(str, Enum):
     OP_THRESHOLD = "OP_THRESHOLD"
     OP_BLUR = "OP_BLUR"
     OP_SHARPEN = "OP_SHARPEN"
+    OP_ADJUST = "OP_ADJUST"
 
 class ColorPostOps(str, Enum):
     OP_CLOSE = "OP_CLOSE"

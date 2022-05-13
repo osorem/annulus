@@ -118,6 +118,8 @@ def enclose_red(img: np.array,
             img_copy = cv2.GaussianBlur(img_copy,       
                          (kernel_size, kernel_size), 0)
         if op == st.ColorPostOps.OP_SHARPEN:
+            if len(img_copy.shape) == 2:
+                img_copy = cv2.cvtColor(img_copy, cv2.COLOR_GRAY2BGR)
             img_copy = cv2.filter2D(img_copy, -1, KERNEL)
             img_copy = cv2.detailEnhance(img_copy)
 
@@ -127,11 +129,15 @@ def enclose_red(img: np.array,
             img_copy = cv2.morphologyEx(img_copy, cv2.MORPH_CLOSE, kernel)
 
         if op == st.ColorPostOps.OP_THRESHOLD:
-            img_copy = cv2.cvtColor(img_copy, cv2.COLOR_BGR2GRAY)
+            if len(img_copy.shape) == 3:
+                img_copy = cv2.cvtColor(img_copy, cv2.COLOR_BGR2GRAY)
             img_copy = cv2.adaptiveThreshold(img_copy.astype(np.uint8), 255, 1, 1, 11, 2)
 
         if op == st.ColorPostOps.OP_NORMALIZE:
             img_copy = cv2.normalize(img_copy, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8UC1)
+
+    if len(img_copy.shape) == 2:
+        img_copy = cv2.cvtColor(img_copy, cv2.COLOR_GRAY2BGR)
 
     return img_copy
 

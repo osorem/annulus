@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 
 from . import settings as st
+from . import auto_brighten
 
 KERNEL = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
 
@@ -43,24 +44,34 @@ def detect_circle(
         maximum radius to be detected
     param_1: int
         the higher threshold of the two passed to the Canny edge detector
-
-
+    
+    
     Returns
     -------
         Circle locations: np.array([x, y, r])
-
+            
     """
-
+    
     img_copy = img.copy()
 
     for op in op_list:
+        if op == st.CircleOps.OP_ADJUST:
+            if len(img_copy.shape) == 2:
+                img_copy = cv2.cvtColor(img_copy, cv2.COLOR_GRAY2BGR)  
+            try:
+                img_copy, _, _ = auto_brighten.automatic_brightness_and_contrast(
+                    img_copy)
+            except:
+                pass
+
+
         if op == st.CircleOps.OP_BLUR:
             kernel_size = 5
-            img_copy = cv2.GaussianBlur(img_copy,
+            img_copy = cv2.GaussianBlur(img_copy,       
                          (kernel_size, kernel_size), 0)
         if op == st.CircleOps.OP_SHARPEN:
             if len(img_copy.shape) == 2:
-                img_copy = cv2.cvtColor(img_copy, cv2.COLOR_GRAY2BGR)
+                img_copy = cv2.cvtColor(img_copy, cv2.COLOR_GRAY2BGR)  
             img_copy = cv2.filter2D(img_copy, -1, KERNEL)
             img_copy = cv2.detailEnhance(img_copy)
 
@@ -71,19 +82,19 @@ def detect_circle(
 
         if op == st.CircleOps.OP_THRESHOLD:
             if len(img_copy.shape) == 3:
-                img_copy = cv2.cvtColor(img_copy, cv2.COLOR_BGR2GRAY)
+                img_copy = cv2.cvtColor(img_copy, cv2.COLOR_BGR2GRAY)                
             img_copy = cv2.adaptiveThreshold(img_copy.astype(np.uint8), 255, 1, 1, 11, 2)
 
         if op == st.CircleOps.OP_NORMALIZE:
             if len(img_copy.shape) == 2:
-                img_copy = cv2.cvtColor(img_copy, cv2.COLOR_GRAY2BGR)
+                img_copy = cv2.cvtColor(img_copy, cv2.COLOR_GRAY2BGR)  
             img_copy = cv2.normalize(img_copy, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8UC1)
-
+    
     if len(img_copy.shape) == 2:
         gray = img_copy
     else:
-        gray = cv2.cvtColor(img_copy, cv2.COLOR_BGR2GRAY)
-
+        gray = cv2.cvtColor(img_copy, cv2.COLOR_BGR2GRAY) 
+    
     algo_circle = cv2.HOUGH_GRADIENT
 
     if algo == st.CircleAlgo.GRADIENT:
@@ -104,7 +115,6 @@ def detect_circle(
 
     if circles is not None:
         circles = np.round(circles[0, :]).astype("int")
-        print(circles)
         return circles
 
     return []

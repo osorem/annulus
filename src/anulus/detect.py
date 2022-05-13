@@ -25,8 +25,8 @@ def anulus_detect(img_path: str, stn: st.Settings, pyrd=True, resize=(820, 600))
             Whethet to pyrDown the image or not (derease qualiy and size.
 
     Returns
-        Final image annotated: np.array
-        Score dict: List
+        Final image annotated: np.array    
+        Score dict: List 
             final SSIM score dict
     """
     print("Began anulus-detect-MAIN")
@@ -107,8 +107,8 @@ def anulus_detect(img_path: str, stn: st.Settings, pyrd=True, resize=(820, 600))
         img_isolated_only = np.zeros((h, w, 3))
         img_isolated_only[y_left:y_right,
                           x_left:x_right] = np.where(
-            crp.imcrop(color_isolated, cd_r) > 0, 1, 0)
-
+            isolated > 0, 1, 0)
+        
 
         ys, xs, _ = np.where(img_isolated_only > 0)
 
@@ -116,10 +116,10 @@ def anulus_detect(img_path: str, stn: st.Settings, pyrd=True, resize=(820, 600))
             p("Image larger than zero empty, continuing...")
             continue
 
-
+        
         x_min, x_max = np.min(xs), np.max(xs)
         y_min, y_max = np.min(ys), np.max(ys)
-
+        
         p("Cropping the image...")
         cd = st.Coords(
             x1=x_min - stn.classifier_add_bb,
@@ -193,7 +193,7 @@ def anulus_detect(img_path: str, stn: st.Settings, pyrd=True, resize=(820, 600))
 
     p("Done! Returning the output image, scores, sign coordinates and isolated color.")
 
-    return output, color_isolated, res
+    return output, color_isolated, res, added
 
 
 def anulus_detect_alt(img_path: str, stn: st.Settings, pyrd=True, resize=(820, 600)) -> np.array:
@@ -228,15 +228,16 @@ def anulus_detect_alt(img_path: str, stn: st.Settings, pyrd=True, resize=(820, 6
     cnts = ops.find_contour(img_preprocessed)
     p(f"Found {len(cnts)} contours")
 
-    signs, coords = ops.find_signs(img_preprocessed, cnts, stn.detect_threshold,
+    signs, coords = ops.find_signs(img_preprocessed, cnts, stn.detect_threshold,    
                          stn.detect_distance_threshold)
-
+    
     output = img.copy()
 
     if len(coords) == 0:
         p("Did not find any signs.")
-        return output, signs, coords, img_preprocessed
+        return output, signs, coords, img_preprocessed, 0
 
+    added = 0
 
     for i, c in enumerate(coords):
         p(f"Operating on detected sign {i + 1} / {len(coords)}")
@@ -266,6 +267,37 @@ def anulus_detect_alt(img_path: str, stn: st.Settings, pyrd=True, resize=(820, 6
 
         img_cropped = cv2.resize(img_cropped, (400, 400))
 
+        p("Isolating the color red based on your settings...")
+        color_isolated_ = color.enclose_red(
+            img, stn.color_low,
+            stn.color_high, stn.color_red_thresh,
+            op_brighten=stn.color_auto_brighten,
+            op_brighten_hsv=stn.color_op_hsv,
+            op_sharpen=stn.color_sharpen,
+            add_red=stn.color_add_red,
+            add_hue=stn.color_add_hue,
+            add_val=stn.color_add_value,
+            add_sat=stn.color_add_saturation,
+            post_ops=stn.color_post_ops,
+            convert_hsv=stn.color_convert_hsv)
+
+        
+        circles_ = shape.detect_circle(
+            color_isolated_,
+            stn.circle_dp,
+            stn.circle_min_dist_from,
+            stn.circle_min_radius,
+            stn.circle_max_radius,
+            stn.circle_param_1,
+            stn.circle_param_2,
+            op_list=stn.circle_op_list,
+            algo=stn.circle_algo
+        )
+
+        if len(circles_) == 0:
+            p("No circles detected in the cropped image, continuing...")
+            continue
+
         img_cropped = cv2.GaussianBlur(img_cropped, (5, 5),
                                        cv2.BORDER_DEFAULT)
         img_cropped = cv2.filter2D(img_cropped, -1, KERNEL)
@@ -293,5 +325,6 @@ def anulus_detect_alt(img_path: str, stn: st.Settings, pyrd=True, resize=(820, 6
         cv2.rectangle(output, (cd.x1, cd.y1), (cd.x2, cd.y2),
                       (0, 255, 0), thickness=2)
 
+        added += 1
 
-    return output, signs, coords, img_preprocessed
+    return output, signs, coords, img_preprocessed, added
