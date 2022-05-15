@@ -5,7 +5,7 @@ sys.path.append(os.path.basename(os.path.dirname(__file__)))
 
 
 from .settings import Settings
-from .detect import anulus_detect, anulus_detect_alt
+from .detect import annulus_detect, annulus_detect_alt
 
 
-all = [Settings, anulus_detect, anulus_detect_alt]
+all = [Settings, annulus_detect, annulus_detect_alt]

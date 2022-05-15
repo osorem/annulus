@@ -3,12 +3,12 @@ from setuptools import setup
 
 
 setup(
-    name='anulus',
+    name='annulus',
     version='0.0.3beta',
     author = "OJ",
     description = "Intredit traffic sign detection and classifier",
-    url = "https://github.com/osorem/anulus",
-    packages=['anulus'],
+    url = "https://github.com/osorem/annulus",
+    packages=['annulus'],
     install_requires=[
         'opencv-python',
         'numpy',
@@ -16,6 +16,6 @@ setup(
         'scikit-image',
         'pillow',
     ],
-    package_dir={'anulus': 'src/anulus'},
-    package_data = {"anulus": ["data/*.png", "matchers/*.png"]}
+    package_dir={'annulus': 'src/annulus'},
+    package_data = {"annulus": ["data/*.png", "matchers/*.png"]}
 )

@@ -82,7 +82,7 @@ def do_grid_search(imgpath, num):
         w_extrema=w_extrema
     )
 
-    res, dcts = detect.anulus_detect(imgpath, st)
+    res, dcts = detect.annulus_detect(imgpath, st)
 
     os.makedirs(f"~/results/{num}")
 
@@ -112,13 +112,13 @@ def do_grid_search(imgpath, num):
 
 # Add imaes here with ABSOLUTE path
 images = [
-    "C:\Users\Administrator\Documents\ENGIDATA201\anulus\images\image1.jpg",
-    "C:\Users\Administrator\Documents\ENGIDATA201\anulus\images\image2.jpg",
-    "C:\Users\Administrator\Documents\ENGIDATA201\anulus\images\image3.jpg",
-    "C:\Users\Administrator\Documents\ENGIDATA201\anulus\images\image4.jpg",
-    "C:\Users\Administrator\Documents\ENGIDATA201\anulus\images\image5.jpg",
-    "C:\Users\Administrator\Documents\ENGIDATA201\anulus\images\image6.jpg",
-    "C:\Users\Administrator\Documents\ENGIDATA201\anulus\images\image7.jpg",
+    "C:\Users\Administrator\Documents\ENGIDATA201\annulus\images\image1.jpg",
+    "C:\Users\Administrator\Documents\ENGIDATA201\annulus\images\image2.jpg",
+    "C:\Users\Administrator\Documents\ENGIDATA201\annulus\images\image3.jpg",
+    "C:\Users\Administrator\Documents\ENGIDATA201\annulus\images\image4.jpg",
+    "C:\Users\Administrator\Documents\ENGIDATA201\annulus\images\image5.jpg",
+    "C:\Users\Administrator\Documents\ENGIDATA201\annulus\images\image6.jpg",
+    "C:\Users\Administrator\Documents\ENGIDATA201\annulus\images\image7.jpg",
 
 ]
 

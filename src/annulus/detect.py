@@ -11,7 +11,7 @@ from . import ops
 KERNEL = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
 
 
-def anulus_detect(img_path: str, stn: st.Settings, pyrd=True, resize=(820, 600)) -> np.array:
+def annulus_detect(img_path: str, stn: st.Settings, pyrd=True, resize=(820, 600)) -> np.array:
     """
     This is the main detect function.
 
@@ -29,7 +29,7 @@ def anulus_detect(img_path: str, stn: st.Settings, pyrd=True, resize=(820, 600))
         Score dict: List 
             final SSIM score dict
     """
-    print("Began anulus-detect-MAIN")
+    print("Began annulus-detect-MAIN")
 
     p = st.Printer(verbose=stn.global_verbose)
 
@@ -196,8 +196,8 @@ def anulus_detect(img_path: str, stn: st.Settings, pyrd=True, resize=(820, 600))
     return output, color_isolated, res, added
 
 
-def anulus_detect_alt(img_path: str, stn: st.Settings, pyrd=True, resize=(820, 600)) -> np.array:
-    print("Began anulus-detect-ALT")
+def annulus_detect_alt(img_path: str, stn: st.Settings, pyrd=True, resize=(820, 600)) -> np.array:
+    print("Began annulus-detect-ALT")
 
     p = st.Printer(verbose=stn.global_verbose)
 

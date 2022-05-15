@@ -1,4 +1,4 @@
-# anulus
+# Annulus detection and classification
 ## Quick Test
 
 Test here:
@@ -18,19 +18,19 @@ This is a Python package that uses color thresholding and other classical vision
 ```bash
 python3.10 virtualenv venv
 source venv/bin/activate (on Linux) or venv/vin/activate.ps1 (Windows)
-python3.10 pip install git+https://github.com/osorem/anulus.git
+python3.10 pip install git+https://github.com/osorem/annulus.git
 ```
 
 2. Create a new Python file and:
 
 ```python
-from anulus import Settings, anulus_detect
+from annulus import Settings, annulus_detect
 import cv2
 from pprint import pprint
 
 st = Settings()
 
-det, ssim_scores, coords, color_isolated = anulus_detect("/path/to/img.png", st)
+det, ssim_scores, coords, color_isolated = annulus_detect("/path/to/img.png", st)
 
 pprint(ssim_scores)
 pprint(coords)
